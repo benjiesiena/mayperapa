@@ -8,6 +8,7 @@ class AppLockState extends Equatable {
   final String? errorMessage;
   final int shakeKey;
   final bool canUseBiometrics;
+  final int pinLength;
 
   const AppLockState({
     required this.isLocked,
@@ -16,6 +17,7 @@ class AppLockState extends Equatable {
     this.errorMessage,
     this.shakeKey = 0,
     this.canUseBiometrics = false,
+    this.pinLength = 4,
   });
 
   AppLockState copyWith({
@@ -26,6 +28,7 @@ class AppLockState extends Equatable {
     bool clearError = false,
     int? shakeKey,
     bool? canUseBiometrics,
+    int? pinLength,
   }) {
     return AppLockState(
       isLocked: isLocked ?? this.isLocked,
@@ -34,6 +37,7 @@ class AppLockState extends Equatable {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       shakeKey: shakeKey ?? this.shakeKey,
       canUseBiometrics: canUseBiometrics ?? this.canUseBiometrics,
+      pinLength: pinLength ?? this.pinLength,
     );
   }
 
@@ -45,5 +49,6 @@ class AppLockState extends Equatable {
         errorMessage,
         shakeKey,
         canUseBiometrics,
+        pinLength,
       ];
 }

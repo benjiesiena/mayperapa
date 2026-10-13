@@ -2,6 +2,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../features/ai_assistant/domain/ai_action_draft.dart';
 import '../../../features/ai_assistant/domain/ai_scenario_sandbox.dart';
+import '../../../features/ai_assistant/domain/scenario_comparison_matrix.dart';
 import '../tools/ai_tool.dart';
 import 'ai_engine.dart';
 
@@ -10,6 +11,7 @@ enum _Intent {
   affordability,
   monthlySpending,
   budgetStatus,
+  autoPilotRebalance,
   goalProgress,
   savingsHelp,
   balance,
@@ -116,6 +118,18 @@ class RuleBasedAIEngine implements AIEngine {
           return AIEngineDecision(
             toolNamesToCall: const ['get_budget_status'],
             toolArgs: {
+              'get_budget_status': {'month': now.toIso8601String()},
+            },
+          );
+        }
+        return const AIEngineDecision(toolNamesToCall: [], isTerminal: true);
+
+      case _Intent.autoPilotRebalance:
+        if (!accumulatedToolResults.containsKey('rebalance_budget_allocations')) {
+          return AIEngineDecision(
+            toolNamesToCall: const ['rebalance_budget_allocations', 'get_budget_status'],
+            toolArgs: {
+              'rebalance_budget_allocations': {'month': now.toIso8601String()},
               'get_budget_status': {'month': now.toIso8601String()},
             },
           );
@@ -256,6 +270,8 @@ class RuleBasedAIEngine implements AIEngine {
         return _monthlySpendingResponse(toolResults);
       case _Intent.budgetStatus:
         return _budgetStatusResponse(toolResults);
+      case _Intent.autoPilotRebalance:
+        return _autoPilotRebalanceResponse(toolResults);
       case _Intent.goalProgress:
         return _goalProgressResponse(toolResults);
       case _Intent.savingsHelp:
@@ -418,8 +434,19 @@ class RuleBasedAIEngine implements AIEngine {
         (hasSpend && (q.contains('month') || q.contains('where') || q.contains('how much')));
     if (hasSpendingQuery) return _Intent.monthlySpending;
 
-    // 7. Balance & Wallet Funds
-    final hasBalanceQuery = q.contains('balance') ||
+    // 7. Auto-Pilot Budget Rebalance & Deficit Handling
+    final hasRebalance = q.contains('rebalance') ||
+        q.contains('over budget') ||
+        q.contains('deficit') ||
+        q.contains('rent increase') ||
+        q.contains('rent raised') ||
+        q.contains('adjust budget') ||
+        q.contains('adjust my budget') ||
+        q.contains('reallocate');
+    if (hasRebalance) return _Intent.autoPilotRebalance;
+
+    // 8. Balance & Wallet Funds
+    final hasBalanceQuery = (q.contains('balance') && !q.contains('rebalance')) ||
         q.contains('how much money do i have') ||
         q.contains('how much money i have') ||
         q.contains('how much do i have') ||
@@ -548,6 +575,42 @@ class RuleBasedAIEngine implements AIEngine {
         '(${CurrencyFormatter.format(spent)} of ${CurrencyFormatter.format(total)}).\n\n'
         '${over ? 'You are **${CurrencyFormatter.format(remaining.abs())}** over budget.' : '**${CurrencyFormatter.format(remaining)}** remaining.'}\n\n'
         '**Suggestion:** ${over ? "Consider scaling back discretionary spending this week to get back on track." : "You are pacing well! Keep this rate up to finish the month with a surplus."}';
+  }
+
+  String _autoPilotRebalanceResponse(Map<String, Map<String, dynamic>> results) {
+    final rebalanceData = results['rebalance_budget_allocations'];
+    if (rebalanceData == null || rebalanceData.containsKey('error')) {
+      final status = results['get_budget_status'];
+      if (status == null || status.containsKey('error')) {
+        return "I checked your MayPeraPa records, but could not find an active monthly budget to rebalance.\n\n"
+            "**Suggestion:** Set up your category allocations first by saying: *\"Plan how to spend and save my salary\"* or *\"Create a monthly budget\"*.";
+      }
+      return "All categories are currently balanced with no urgent deficits detected.\n\n"
+          "**Suggestion:** You can simulate scenario adjustments anytime by asking: *\"What if I cut dining out by ₱1,500?\"*";
+    }
+
+    final isNeeded = rebalanceData['isRebalanceNeeded'] == true;
+    final totalDeficit = (rebalanceData['totalDeficit'] as num?)?.toDouble() ?? 0.0;
+    final transfers = rebalanceData['transfers'] as List? ?? [];
+
+    if (!isNeeded || transfers.isEmpty) {
+      return "Your active categories are in healthy balance with zero over-budget deficits.\n\n"
+          "**Maya Insight:** Keep pacing at this rate to finish the month with a surplus cushion.";
+    }
+
+    final buffer = StringBuffer();
+    buffer.writeln("I analyzed your category burn rates and identified **${CurrencyFormatter.format(totalDeficit)}** in category deficits.");
+    buffer.writeln();
+    buffer.writeln("Applying **Axiom 3 (Sacrifice Hierarchy)**, here is Maya's zero-debt rebalancing strategy:");
+    for (final t in transfers) {
+      final from = t['from'] as String? ?? 'Discretionary';
+      final to = t['to'] as String? ?? 'Deficit';
+      final amount = (t['amount'] as num?)?.toDouble() ?? 0.0;
+      buffer.writeln("• Shift **${CurrencyFormatter.format(amount)}** from *$from* → *$to*");
+    }
+    buffer.writeln();
+    buffer.write("**One-Tap Fix:** Tap **Apply Plan** on the card below to update your category budgets immediately without borrowing or dipping into your emergency fund.");
+    return buffer.toString().trim();
   }
 
   String _goalProgressResponse(Map<String, Map<String, dynamic>> results) {
@@ -1025,6 +1088,80 @@ class RuleBasedAIEngine implements AIEngine {
       goalTargetAmount: goalTarget,
       goalCurrentAmount: goalCurrent,
       goalName: goalName,
+    );
+  }
+
+  @override
+  ScenarioComparisonMatrix? extractScenarioComparisonMatrix({
+    required String userMessage,
+    required Map<String, Map<String, dynamic>> toolResults,
+  }) {
+    final q = userMessage.toLowerCase().trim();
+    final isDilemma = q.contains('rebalance') ||
+        q.contains('deficit') ||
+        q.contains('scenario') ||
+        q.contains('compare') ||
+        q.contains('rent increase') ||
+        q.contains('rent raised') ||
+        q.contains('adjust budget') ||
+        (q.contains('debt') && q.contains('save')) ||
+        (q.contains('pay off') && q.contains('savings'));
+
+    if (!isDilemma) return null;
+
+    final rebalanceData = toolResults['rebalance_budget_allocations'];
+    final totalDeficit = (rebalanceData?['totalDeficit'] as num?)?.toDouble() ?? 2500.0;
+    final now = DateTime.now();
+
+    return ScenarioComparisonMatrix(
+      title: q.contains('debt') ? 'Debt Elimination vs Emergency Runway' : 'Auto-Pilot Budget Scenarios',
+      aiVerdictSummary: q.contains('debt')
+          ? 'Guaranteed return: 36% APR debt payoff delivers instant risk-free return while keeping a 1-month liquid defense buffer.'
+          : 'Reallocating ₱${totalDeficit.toStringAsFixed(0)} from discretionary wants eliminates category deficits with 0 new borrowing.',
+      scenarios: [
+        const FinancialScenarioOption(
+          id: 'current_pace',
+          title: 'Current Pace',
+          badge: 'Status Quo',
+          discretionarySpend: 8500,
+          monthlySavings: 1500,
+          emergencyRunwayMonths: 1.8,
+          goalTargetMonths: 24,
+          isRecommended: false,
+        ),
+        FinancialScenarioOption(
+          id: 'auto_rebalanced',
+          title: 'Auto-Rebalanced',
+          badge: 'Maya Pick',
+          discretionarySpend: 6000,
+          monthlySavings: 4000,
+          emergencyRunwayMonths: 3.2,
+          goalTargetMonths: 14,
+          isRecommended: true,
+          actionDraft: AIActionDraft(
+            id: 'rebalance_${now.millisecondsSinceEpoch}',
+            type: AIActionType.createBudget,
+            title: 'Apply Auto-Pilot Rebalance',
+            subtitle: 'Reallocate ₱${totalDeficit.toStringAsFixed(0)} to eliminate deficits',
+            payload: const {
+              'name': 'Auto-Pilot Rebalanced Budget',
+              'amount': 25000.0,
+              'rebalance': true,
+            },
+            createdAt: now,
+          ),
+        ),
+        const FinancialScenarioOption(
+          id: 'aggressive_saver',
+          title: 'Aggressive Saver',
+          badge: 'Max Velocity',
+          discretionarySpend: 3500,
+          monthlySavings: 6500,
+          emergencyRunwayMonths: 5.0,
+          goalTargetMonths: 9,
+          isRecommended: false,
+        ),
+      ],
     );
   }
 

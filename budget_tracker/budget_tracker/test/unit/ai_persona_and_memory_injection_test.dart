@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mayperapa/features/ai_assistant/domain/ai_action_draft.dart';
 import 'package:mayperapa/features/ai_assistant/domain/ai_orchestrator.dart';
 import 'package:mayperapa/features/ai_assistant/domain/ai_scenario_sandbox.dart';
+import 'package:mayperapa/features/ai_assistant/domain/scenario_comparison_matrix.dart';
 import 'package:mayperapa/features/ai_assistant/domain/user_financial_profile_repository.dart';
 import 'package:mayperapa/infrastructure/ai/runtime/ai_engine.dart';
 import 'package:mayperapa/infrastructure/ai/tools/ai_response_validator.dart';
@@ -75,6 +76,12 @@ class _RecordingEngine implements AIEngine {
 
   @override
   AIScenarioSandbox? extractScenarioSandbox({
+    required String userMessage,
+    required Map<String, Map<String, dynamic>> toolResults,
+  }) => null;
+
+  @override
+  ScenarioComparisonMatrix? extractScenarioComparisonMatrix({
     required String userMessage,
     required Map<String, Map<String, dynamic>> toolResults,
   }) => null;

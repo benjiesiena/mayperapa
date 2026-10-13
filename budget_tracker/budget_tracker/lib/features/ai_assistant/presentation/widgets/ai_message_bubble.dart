@@ -7,6 +7,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../domain/ai_message.dart';
 import '../providers/ai_chat_provider.dart';
 import 'ai_action_card.dart';
+import 'scenario_comparison_grid_card.dart';
 import 'scenario_sandbox_card.dart';
 import 'thinking_process_card.dart';
 
@@ -25,7 +26,9 @@ class AIMessageBubble extends ConsumerWidget {
     final palette = context.appColors;
     final isUser = message.role == AIMessageRole.user;
     final screenWidth = MediaQuery.of(context).size.width;
-    final hasExpandedArtifact = message.actionDraft != null || message.scenarioSandbox != null;
+    final hasExpandedArtifact = message.actionDraft != null ||
+        message.scenarioSandbox != null ||
+        message.scenarioComparisonMatrix != null;
     final maxWidth = isUser || !hasExpandedArtifact
         ? screenWidth * 0.82
         : screenWidth * 0.94;
@@ -58,6 +61,19 @@ class AIMessageBubble extends ConsumerWidget {
                   height: 1.45,
                 ),
               ),
+              if (message.scenarioComparisonMatrix != null)
+                ScenarioComparisonGridCard(
+                  matrix: message.scenarioComparisonMatrix!,
+                  onSelectScenario: (scenario) {
+                    if (scenario.actionDraft != null) {
+                      ref.read(aiChatProvider.notifier).confirmAction(scenario.actionDraft!);
+                    } else {
+                      ref.read(aiChatProvider.notifier).sendMessage(
+                            'Apply this scenario: follow the ${scenario.title} financial plan.',
+                          );
+                    }
+                  },
+                ),
               if (message.scenarioSandbox != null)
                 ScenarioSandboxCard(
                   sandbox: message.scenarioSandbox!,

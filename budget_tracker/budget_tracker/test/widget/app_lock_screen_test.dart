@@ -29,6 +29,9 @@ class _FakeSecurityManager extends SecurityManager {
   Future<bool> authenticateWithBiometrics({String reason = 'Unlock MayPeraPa'}) async {
     return biometricAuthSuccess;
   }
+
+  @override
+  Future<int> getPinLength() async => configuredPin?.length ?? 4;
 }
 
 class _FakeSettingsNotifier extends SettingsNotifier {

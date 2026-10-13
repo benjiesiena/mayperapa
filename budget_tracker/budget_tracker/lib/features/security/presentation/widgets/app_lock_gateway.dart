@@ -39,6 +39,7 @@ class _AppLockGatewayState extends ConsumerState<AppLockGateway>
 
     switch (state) {
       case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
         notifier.onAppPaused();
         break;
       case AppLifecycleState.resumed:
@@ -46,7 +47,6 @@ class _AppLockGatewayState extends ConsumerState<AppLockGateway>
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
         break;
     }
   }

@@ -38,9 +38,9 @@ void main() {
 
     // 3. Verify bottom sheet items are rendered
     expect(find.text('Maya AI Engine'), findsOneWidget);
-    expect(find.text('⚡ Instant Offline Coach'), findsOneWidget);
-    expect(find.text('🌐 Cloud Advisor (Gemini Flash)'), findsOneWidget);
-    expect(find.text('🧠 Lightweight On-Device LLM'), findsOneWidget);
+    expect(find.text('Instant Offline Coach'), findsOneWidget);
+    expect(find.text('Cloud Advisor (Gemini Flash)'), findsOneWidget);
+    expect(find.text('Lightweight On-Device LLM'), findsOneWidget);
 
     // 4. Tap "Cloud Advisor" mode
     await tester.tap(find.text('🌐 Cloud Advisor (Gemini Flash)'));

@@ -98,17 +98,17 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
     switch (mode) {
       case AIEngineMode.cloudAdvisor:
-        modeTitle = '🌐 Cloud Advisor (Gemini Flash)';
+        modeTitle = 'Cloud Advisor (Gemini Flash)';
         modeIcon = Icons.cloud_outlined;
         modeColor = palette.positive;
         break;
       case AIEngineMode.localNeural:
-        modeTitle = '🧠 Qwen 2.5 0.5B (On-Device Neural)';
+        modeTitle = 'Qwen 2.5 0.5B (On-Device Neural)';
         modeIcon = Icons.psychology;
         modeColor = palette.primary;
         break;
       case AIEngineMode.instantOffline:
-        modeTitle = '⚡ Instant Offline (<0.05s)';
+        modeTitle = 'Instant Offline';
         modeIcon = Icons.bolt;
         modeColor = palette.primary;
         break;
@@ -269,17 +269,17 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
     switch (mode) {
       case AIEngineMode.cloudAdvisor:
-        message = '🌐 Cloud Advisor — natural advice & coaching';
+        message = 'Cloud Advisor';
         icon = Icons.cloud_outlined;
         color = palette.positive;
         break;
       case AIEngineMode.localNeural:
-        message = '🧠 Qwen 2.5 0.5B — on-device neural model';
+        message = 'Qwen 2.5 0.5B — on-device neural model';
         icon = Icons.psychology;
         color = palette.primary;
         break;
       case AIEngineMode.instantOffline:
-        message = '⚡ Instant Offline — sub-50ms verified coaching';
+        message = 'Instant Offline';
         icon = Icons.bolt;
         color = palette.primary;
         break;
@@ -519,7 +519,7 @@ class _ModelManagerSheetState extends ConsumerState<_ModelManagerSheet> {
                 context: context,
                 mode: AIEngineMode.instantOffline,
                 isSelected: currentMode == AIEngineMode.instantOffline,
-                title: '⚡ Instant Offline Coach',
+                title: 'Instant Offline Coach',
                 badge: 'Fastest (<0.05s)',
                 description: '100% offline, zero internet. Live database calculations + expanded coaching rules (50/30/20, emergency funds, debt payoff).',
                 onTap: () {
@@ -533,7 +533,7 @@ class _ModelManagerSheetState extends ConsumerState<_ModelManagerSheet> {
                 context: context,
                 mode: AIEngineMode.cloudAdvisor,
                 isSelected: currentMode == AIEngineMode.cloudAdvisor,
-                title: '🌐 Cloud Advisor (Gemini Flash)',
+                title: 'Cloud Advisor',
                 badge: 'Human-like (~0.6s)',
                 description: 'Speaks like a real financial mentor with empathy, conversational understanding, and personalized advice.',
                 onTap: () {
@@ -617,7 +617,7 @@ class _ModelManagerSheetState extends ConsumerState<_ModelManagerSheet> {
                 context: context,
                 mode: AIEngineMode.localNeural,
                 isSelected: currentMode == AIEngineMode.localNeural,
-                title: '🧠 Lightweight On-Device LLM',
+                title: 'Lightweight On-Device LLM',
                 badge: 'Offline Neural (~3-5s)',
                 description: 'Qwen 2.5 0.5B Instruct (~390 MB). Runs locally on mobile CPU via llama.cpp without sending any data over the internet.',
                 onTap: () {

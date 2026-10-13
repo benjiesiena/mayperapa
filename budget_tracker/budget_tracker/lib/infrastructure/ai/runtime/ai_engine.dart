@@ -1,5 +1,6 @@
 import '../../../features/ai_assistant/domain/ai_action_draft.dart';
 import '../../../features/ai_assistant/domain/ai_scenario_sandbox.dart';
+import '../../../features/ai_assistant/domain/scenario_comparison_matrix.dart';
 import '../tools/ai_tool.dart';
 
 /// A single exchange the engine needs to reason about tool selection.
@@ -68,6 +69,13 @@ abstract class AIEngine {
   /// Extracts an interactive scenario sandbox if the user's message is a what-if query.
   /// Defaults to null.
   AIScenarioSandbox? extractScenarioSandbox({
+    required String userMessage,
+    required Map<String, Map<String, dynamic>> toolResults,
+  }) => null;
+
+  /// Extracts an interactive scenario comparison matrix for trade-off / dilemma queries.
+  /// Defaults to null.
+  ScenarioComparisonMatrix? extractScenarioComparisonMatrix({
     required String userMessage,
     required Map<String, Map<String, dynamic>> toolResults,
   }) => null;

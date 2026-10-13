@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -18,6 +19,7 @@ class SecurityManager {
   static const _dbKeyIdentifier = 'db_encryption_key_v1';
   static const _pinHashIdentifier = 'pin_hash_v1';
   static const _pinSaltIdentifier = 'pin_salt_v1';
+  static const _pinLengthIdentifier = 'pin_length_v1';
 
   /// Returns the SQLCipher passphrase, generating and persisting a new
   /// cryptographically random one on first launch. The key never leaves
@@ -51,10 +53,12 @@ class SecurityManager {
 
   Future<bool> isBiometricAvailable() async {
     try {
-      final supported = await _localAuth.isDeviceSupported();
+      final isSupported = await _localAuth.isDeviceSupported();
       final canCheck = await _localAuth.canCheckBiometrics;
-      return supported && canCheck;
-    } catch (_) {
+      final availableBiometrics = await _localAuth.getAvailableBiometrics();
+      return (isSupported || canCheck) && (canCheck || availableBiometrics.isNotEmpty);
+    } catch (e, stack) {
+      debugPrint('SecurityManager: isBiometricAvailable check failed: $e\n$stack');
       return false;
     }
   }
@@ -65,7 +69,8 @@ class SecurityManager {
         localizedReason: reason,
         options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
       );
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('SecurityManager: authenticateWithBiometrics failed: $e\n$stack');
       return false;
     }
   }
@@ -77,6 +82,16 @@ class SecurityManager {
     final hash = _hashPIN(pin, salt);
     await _storage.write(key: _pinSaltIdentifier, value: salt);
     await _storage.write(key: _pinHashIdentifier, value: hash);
+    await _storage.write(key: _pinLengthIdentifier, value: pin.length.toString());
+  }
+
+  Future<int> getPinLength() async {
+    final lengthStr = await _storage.read(key: _pinLengthIdentifier);
+    if (lengthStr != null) {
+      final parsed = int.tryParse(lengthStr);
+      if (parsed != null && parsed >= 4 && parsed <= 6) return parsed;
+    }
+    return 4;
   }
 
   Future<bool> verifyPIN(String pin) async {

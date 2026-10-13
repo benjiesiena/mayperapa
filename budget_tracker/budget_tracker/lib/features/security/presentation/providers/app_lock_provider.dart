@@ -23,18 +23,34 @@ class AppLockNotifier extends Notifier<AppLockState> {
         settings.biometricEnabled &&
         settings.hasPinConfigured;
 
-    // If App Lock is not configured or disabled, mark session authenticated
-    if (!hasSecurityConfigured) {
+    // Only mark session as authenticated if settings have finished loading
+    // and security is confirmed to be unconfigured or disabled.
+    // If settings are still loading (settings == null), do NOT mark session authenticated.
+    if (settings != null && !hasSecurityConfigured) {
       _isAuthenticatedSession = true;
     }
 
-    // Only lock on cold boot when security is configured and not yet unlocked
+    // Lock on cold boot when security is configured and session is not yet unlocked
     final isLocked = hasSecurityConfigured && !_isAuthenticatedSession;
+
+    final currentPinLength = stateOrNull?.pinLength ?? 4;
+    if (isLocked) {
+      _loadPinLength();
+    }
 
     return AppLockState(
       isLocked: isLocked,
       canUseBiometrics: canBiometrics,
+      pinLength: currentPinLength,
     );
+  }
+
+  Future<void> _loadPinLength() async {
+    final sec = ref.read(securityManagerProvider);
+    final length = await sec.getPinLength();
+    if (state.pinLength != length) {
+      state = state.copyWith(pinLength: length);
+    }
   }
 
   void onAppPaused({DateTime? pausedAt}) {
@@ -62,13 +78,15 @@ class AppLockNotifier extends Notifier<AppLockState> {
   void lock() {
     _isAuthenticatedSession = false;
     final settings = ref.read(settingsNotifierProvider).valueOrNull;
-    final canBiometrics = settings?.biometricEnabled ?? false;
+    final canBiometrics = (settings?.biometricEnabled ?? false) &&
+        (settings?.hasPinConfigured ?? false);
     state = state.copyWith(
       isLocked: true,
       pinInput: '',
       clearError: true,
       canUseBiometrics: canBiometrics,
     );
+    _loadPinLength();
   }
 
   void unlock() {
@@ -82,7 +100,7 @@ class AppLockNotifier extends Notifier<AppLockState> {
   }
 
   void appendPinDigit(String digit) {
-    if (state.pinInput.length >= 6) return;
+    if (state.pinInput.length >= state.pinLength) return;
     final newPin = state.pinInput + digit;
     state = state.copyWith(pinInput: newPin, clearError: true);
   }

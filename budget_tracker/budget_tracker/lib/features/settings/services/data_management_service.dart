@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 import '../../../../shared/data/database/database_helper.dart';
 import '../../../../shared/data/repositories/account_repository_impl.dart';
 import '../../../../shared/data/repositories/category_repository_impl.dart';

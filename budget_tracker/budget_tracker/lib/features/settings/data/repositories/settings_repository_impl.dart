@@ -1,4 +1,4 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 import '../../../../infrastructure/security/key_management/security_manager.dart';
 import '../../../../shared/data/database/database_helper.dart';
 import '../../domain/entities/app_settings.dart';

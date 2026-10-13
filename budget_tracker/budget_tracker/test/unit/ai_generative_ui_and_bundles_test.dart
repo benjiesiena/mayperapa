@@ -201,5 +201,60 @@ void main() {
       expect(sandbox!.categoryName.toLowerCase(), contains('dining'));
       expect(sandbox.baselineCutAmount, 1500.0);
     });
+
+    test('RuleBasedAIEngine extracts ScenarioComparisonMatrix for financial dilemma queries', () async {
+      final engine = RuleBasedAIEngine();
+      final matrix = engine.extractScenarioComparisonMatrix(
+        userMessage: 'My rent increased by ₱3,000. Rebalance my budget and compare scenarios',
+        toolResults: {
+          'rebalance_budget_allocations': {
+            'totalDeficit': 3000.0,
+            'isRebalanceNeeded': true,
+          },
+        },
+      );
+
+      expect(matrix, isNotNull);
+      expect(matrix!.scenarios.length, 3);
+      expect(matrix.recommendedScenario.isRecommended, isTrue);
+      expect(matrix.recommendedScenario.actionDraft, isNotNull);
+      expect(matrix.aiVerdictSummary, contains('3000'));
+    });
+
+    test('RuleBasedAIEngine plans and resolves autoPilotRebalance intent without hallucination', () async {
+      final engine = RuleBasedAIEngine();
+      final plan = await engine.planToolCalls(
+        userMessage: 'I am over budget on groceries, please rebalance my categories',
+        availableTools: const [],
+        conversationHistory: const [],
+      );
+
+      expect(plan.toolNamesToCall, contains('rebalance_budget_allocations'));
+      expect(plan.toolNamesToCall, contains('get_budget_status'));
+
+      final response = await engine.generateResponse(
+        userMessage: 'rebalance my categories',
+        toolResults: {
+          'rebalance_budget_allocations': {
+            'isRebalanceNeeded': true,
+            'totalDeficit': 1500.0,
+            'transfers': [
+              {
+                'from': 'Dining Out',
+                'to': 'Groceries',
+                'amount': 1500.0,
+                'rationale': 'Sacrifice discretionary dining to cover grocery deficit.',
+              }
+            ],
+          },
+        },
+        conversationHistory: const [],
+      );
+
+      expect(response, contains('₱1,500'));
+      expect(response, contains('Dining Out'));
+      expect(response, contains('Groceries'));
+      expect(response, contains('Axiom 3'));
+    });
   });
 }

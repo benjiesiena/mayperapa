@@ -52,9 +52,9 @@ class _AppLockScreenState extends ConsumerState<AppLockScreen>
     final notifier = ref.read(appLockProvider.notifier);
     notifier.appendPinDigit(digit);
 
-    final currentPin = ref.read(appLockProvider).pinInput;
-    // Auto-verify if 4 digits are reached (common PIN length)
-    if (currentPin.length >= 4) {
+    final lockState = ref.read(appLockProvider);
+    // Auto-verify as soon as the configured PIN length is reached
+    if (lockState.pinInput.length >= lockState.pinLength) {
       notifier.submitPin();
     }
   }
@@ -133,7 +133,7 @@ class _AppLockScreenState extends ConsumerState<AppLockScreen>
                         child: child,
                       );
                     },
-                    child: _buildPinDots(lockState.pinInput.length, palette),
+                    child: _buildPinDots(lockState.pinInput.length, lockState.pinLength, palette),
                   ),
 
                   // Error Message
@@ -175,8 +175,7 @@ class _AppLockScreenState extends ConsumerState<AppLockScreen>
     );
   }
 
-  Widget _buildPinDots(int filledCount, AppColorPalette palette) {
-    const totalDots = 4;
+  Widget _buildPinDots(int filledCount, int totalDots, AppColorPalette palette) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(totalDots, (index) {

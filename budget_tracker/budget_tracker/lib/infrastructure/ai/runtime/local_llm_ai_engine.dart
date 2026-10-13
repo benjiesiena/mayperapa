@@ -7,7 +7,9 @@ import 'package:path/path.dart' as p;
 
 import '../../../core/utils/currency_formatter.dart';
 import '../../../features/ai_assistant/domain/ai_action_draft.dart';
+import '../../../features/ai_assistant/domain/ai_deliberation_engine.dart';
 import '../../../features/ai_assistant/domain/ai_scenario_sandbox.dart';
+import '../../../features/ai_assistant/domain/scenario_comparison_matrix.dart';
 import '../tools/ai_response_validator.dart';
 import '../tools/ai_tool.dart';
 import 'ai_config.dart';
@@ -200,6 +202,8 @@ class LocalLLMAIEngine implements AIEngine {
     buffer.writeln('3. EXACT FIGURES ONLY: Only cite exact numbers that appear verbatim in the verified facts.');
     buffer.writeln('4. Format cleanly with concise bullet points for mobile. Do NOT use emojis.');
     buffer.writeln();
+    buffer.writeln(const AIDeliberationEngine().getDeliberationDirectives());
+    buffer.writeln();
 
     final profileData = toolResults['user_financial_profile'];
     if (profileData != null) {
@@ -365,6 +369,17 @@ STRICT CLOSED-WORLD RULES:
     required Map<String, Map<String, dynamic>> toolResults,
   }) {
     return _fallbackEngine.extractScenarioSandbox(
+      userMessage: userMessage,
+      toolResults: toolResults,
+    );
+  }
+
+  @override
+  ScenarioComparisonMatrix? extractScenarioComparisonMatrix({
+    required String userMessage,
+    required Map<String, Map<String, dynamic>> toolResults,
+  }) {
+    return _fallbackEngine.extractScenarioComparisonMatrix(
       userMessage: userMessage,
       toolResults: toolResults,
     );

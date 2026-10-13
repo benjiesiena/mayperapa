@@ -106,8 +106,12 @@ class SettingsNotifier extends Notifier<AsyncValue<AppSettings>> {
     await sec.setPIN(pin);
     final current = state.valueOrNull;
     if (current != null) {
-      final updated = current.copyWith(hasPinConfigured: true);
+      final updated = current.copyWith(
+        hasPinConfigured: true,
+        autoLockEnabled: true,
+      );
       state = AsyncValue.data(updated);
+      await ref.read(settingsRepositoryProvider).saveSettings(updated);
     }
   }
 

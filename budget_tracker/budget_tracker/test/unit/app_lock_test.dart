@@ -29,6 +29,9 @@ class FakeSecurityManager extends SecurityManager {
   Future<bool> authenticateWithBiometrics({String reason = 'Unlock MayPeraPa'}) async {
     return biometricAuthSuccess;
   }
+
+  @override
+  Future<int> getPinLength() async => configuredPin?.length ?? 4;
 }
 
 void main() {
@@ -219,7 +222,39 @@ void main() {
       // Verify that app lock state remains UNLOCKED
       expect(container.read(appLockProvider).isLocked, isFalse);
     });
+
+    test('cold boot: locks after settings finish loading asynchronously from SQLite', () async {
+      final fakeSecurity = FakeSecurityManager(configuredPin: '1234');
+      final asyncSettingsNotifier = _AsyncFakeSettingsNotifier();
+      final container = ProviderContainer(
+        overrides: [
+          securityManagerProvider.overrideWithValue(fakeSecurity),
+          settingsNotifierProvider.overrideWith(() => asyncSettingsNotifier),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Initially loading, unauthenticated
+      expect(container.read(appLockProvider).isLocked, isFalse);
+
+      // Settings resolve from SQLite with security configured
+      asyncSettingsNotifier.completeLoading(
+        const AppSettings(userId: 1, autoLockEnabled: true, hasPinConfigured: true),
+      );
+
+      // App lock must lock on launch
+      expect(container.read(appLockProvider).isLocked, isTrue);
+    });
   });
+}
+
+class _AsyncFakeSettingsNotifier extends SettingsNotifier {
+  @override
+  AsyncValue<AppSettings> build() => const AsyncValue.loading();
+
+  void completeLoading(AppSettings settings) {
+    state = AsyncValue.data(settings);
+  }
 }
 
 class _FakeSettingsNotifier extends SettingsNotifier {

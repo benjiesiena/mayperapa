@@ -2,6 +2,7 @@ import "package:equatable/equatable.dart";
 import "ai_action_draft.dart";
 import "ai_reasoning_step.dart";
 import "ai_scenario_sandbox.dart";
+import "scenario_comparison_matrix.dart";
 
 enum AIMessageRole { user, assistant, system }
 
@@ -13,6 +14,7 @@ class AIMessage extends Equatable {
   final List<String> toolCallNames;
   final AIActionDraft? actionDraft;
   final AIScenarioSandbox? scenarioSandbox;
+  final ScenarioComparisonMatrix? scenarioComparisonMatrix;
   final List<AIReasoningStep> reasoningSteps;
   final Duration? thinkingDuration;
   final DateTime createdAt;
@@ -25,6 +27,7 @@ class AIMessage extends Equatable {
     this.toolCallNames = const [],
     this.actionDraft,
     this.scenarioSandbox,
+    this.scenarioComparisonMatrix,
     this.reasoningSteps = const [],
     this.thinkingDuration,
     required this.createdAt,
@@ -38,6 +41,7 @@ class AIMessage extends Equatable {
     List<String>? toolCallNames,
     AIActionDraft? actionDraft,
     AIScenarioSandbox? scenarioSandbox,
+    ScenarioComparisonMatrix? scenarioComparisonMatrix,
     List<AIReasoningStep>? reasoningSteps,
     Duration? thinkingDuration,
     DateTime? createdAt,
@@ -50,6 +54,7 @@ class AIMessage extends Equatable {
       toolCallNames: toolCallNames ?? this.toolCallNames,
       actionDraft: actionDraft ?? this.actionDraft,
       scenarioSandbox: scenarioSandbox ?? this.scenarioSandbox,
+      scenarioComparisonMatrix: scenarioComparisonMatrix ?? this.scenarioComparisonMatrix,
       reasoningSteps: reasoningSteps ?? this.reasoningSteps,
       thinkingDuration: thinkingDuration ?? this.thinkingDuration,
       createdAt: createdAt ?? this.createdAt,
@@ -65,6 +70,7 @@ class AIMessage extends Equatable {
         toolCallNames,
         actionDraft,
         scenarioSandbox,
+        scenarioComparisonMatrix,
         reasoningSteps,
         thinkingDuration,
         createdAt,

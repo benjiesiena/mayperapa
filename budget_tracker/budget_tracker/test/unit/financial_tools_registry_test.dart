@@ -6,8 +6,10 @@ import 'package:mayperapa/shared/domain/entities/enums.dart';
 import 'package:mayperapa/shared/domain/entities/budget.dart';
 import 'package:mayperapa/shared/domain/entities/financial_goal.dart';
 import 'package:mayperapa/shared/domain/entities/recurring_transaction.dart';
+import 'package:mayperapa/shared/domain/entities/category.dart';
 import 'package:mayperapa/shared/domain/repositories/transaction_repository.dart';
 import 'package:mayperapa/shared/domain/repositories/account_repository.dart';
+import 'package:mayperapa/shared/domain/repositories/category_repository.dart';
 import 'package:mayperapa/shared/domain/repositories/budget_repository.dart';
 import 'package:mayperapa/shared/domain/repositories/goal_repository.dart';
 import 'package:mayperapa/shared/domain/repositories/recurring_transaction_repository.dart';
@@ -104,6 +106,25 @@ class FakeRecurringRepository implements RecurringTransactionRepository {
   Future<List<RecurringTransaction>> getAllForUser(int userId, {bool activeOnly = true}) async => data;
   @override
   Future<RecurringTransaction> update(RecurringTransaction r) async => r;
+}
+
+class FakeCategoryRepository implements CategoryRepository {
+  final List<Category> data;
+  FakeCategoryRepository(this.data);
+
+  @override
+  Future<Category> create(Category c) async => c;
+  @override
+  Future<void> delete(int id) async {}
+  @override
+  Future<List<Category>> getAllForUser(int userId, {bool activeOnly = true}) async => data;
+  @override
+  Future<Category?> getById(int id) async =>
+      data.where((c) => c.id == id).firstOrNull;
+  @override
+  Future<void> seedDefaults(int userId) async {}
+  @override
+  Future<Category> update(Category c) async => c;
 }
 
 AITool _find(List<AITool> tools, String name) => tools.firstWhere((t) => t.name == name);
@@ -276,6 +297,63 @@ void main() {
       expect(result.data['canAffordPurchase'], isTrue);
       expect(result.data['goalName'], equals('House Downpayment'));
       expect(result.data['monthsSaved'], greaterThan(0));
+    });
+
+    test('rebalance_budget_allocations detects deficit and proposes transfer from discretionary category', () async {
+      final now = DateTime.now();
+      final budget = Budget(
+        id: 1,
+        userId: 1,
+        name: 'October 2026',
+        type: BudgetType.monthly,
+        periodStart: DateTime(now.year, now.month, 1),
+        periodEnd: DateTime(now.year, now.month + 1, 0),
+        totalBudget: 15000,
+        strategy: BudgetStrategy.zeroBased,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final items = [
+        BudgetItem(id: 1, budgetId: 1, categoryId: 1, amount: 8000, createdAt: now, updatedAt: now), // Groceries
+        BudgetItem(id: 2, budgetId: 1, categoryId: 2, amount: 7000, createdAt: now, updatedAt: now), // Dining Out
+      ];
+
+      final categories = [
+        Category(id: 1, userId: 1, name: 'Groceries', type: CategoryType.expense, icon: 'groceries', color: '#00FF00', isDefault: true, createdAt: now, updatedAt: now),
+        Category(id: 2, userId: 1, name: 'Dining Out', type: CategoryType.expense, icon: 'dining', color: '#FF0000', isDefault: true, createdAt: now, updatedAt: now),
+      ];
+
+      final txns = [
+        // ₱9,500 in Groceries -> ₱1,500 deficit
+        Transaction(userId: 1, accountId: 1, categoryId: 1, type: TransactionType.expense, amount: 9500, date: now, createdAt: now, updatedAt: now),
+        // ₱2,000 in Dining Out -> ₱5,000 surplus
+        Transaction(userId: 1, accountId: 1, categoryId: 2, type: TransactionType.expense, amount: 2000, date: now, createdAt: now, updatedAt: now),
+      ];
+
+      final budgetRepo = FakeBudgetRepository(active: budget)..items = items;
+      final registry = FinancialToolsRegistry(
+        userId: 1,
+        transactionRepository: FakeTransactionRepository(txns),
+        accountRepository: FakeAccountRepository(),
+        budgetRepository: budgetRepo,
+        goalRepository: FakeGoalRepository([]),
+        recurringRepository: FakeRecurringRepository([]),
+        categoryRepository: FakeCategoryRepository(categories),
+      );
+
+      final result = await _find(registry.buildTools(), 'rebalance_budget_allocations').execute({
+        'month': now.toIso8601String(),
+      });
+
+      expect(result.success, isTrue);
+      expect(result.data['isRebalanceNeeded'], isTrue);
+      expect(result.data['totalDeficit'], equals(1500.0));
+      final transfers = result.data['transfers'] as List;
+      expect(transfers, isNotEmpty);
+      expect(transfers.first['from'], equals('Dining Out'));
+      expect(transfers.first['to'], equals('Groceries'));
+      expect(transfers.first['amount'], equals(1500.0));
     });
   });
 }

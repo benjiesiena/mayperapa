@@ -12,6 +12,7 @@ import '../../ai_assistant/domain/user_financial_profile.dart';
 import '../../ai_assistant/presentation/providers/financial_profile_provider.dart';
 import '../domain/entities/app_settings.dart';
 import 'providers/settings_provider.dart';
+import '../../security/presentation/providers/app_lock_provider.dart';
 
 /// Settings screen implementing full business logic, offline persistence,
 /// security key management, and data import/export workflows per AGENTS.md.
@@ -119,6 +120,18 @@ class SettingsScreen extends ConsumerWidget {
                 trailingText: settings.hasPinConfigured ? 'Configured' : 'Not Set',
                 onTap: () => _showPinManagementDialog(context, ref, settings.hasPinConfigured),
               ),
+              if (settings.autoLockEnabled && settings.hasPinConfigured) ...[
+                _divider(context),
+                _actionRow(
+                  context,
+                  icon: Icons.lock_clock_outlined,
+                  label: 'Lock App Now',
+                  trailingText: 'Lock',
+                  onTap: () {
+                    ref.read(appLockProvider.notifier).lock();
+                  },
+                ),
+              ],
             ]),
 
             // 3. AI Settings
@@ -656,7 +669,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Your PIN is securely hashed using SHA-256 and stored in the hardware keystore.',
+              'Your PIN is securely stored.',
               style: AppTypography.supporting.copyWith(color: palette.textSecondary),
             ),
             const SizedBox(height: AppSpacing.md),

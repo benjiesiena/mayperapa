@@ -1,4 +1,5 @@
 import '../../../shared/domain/entities/enums.dart';
+import '../../../shared/domain/entities/category.dart';
 import '../../../shared/domain/repositories/transaction_repository.dart';
 import '../../../shared/domain/repositories/account_repository.dart';
 import '../../../shared/domain/repositories/category_repository.dart';
@@ -7,6 +8,7 @@ import '../../../shared/domain/repositories/goal_repository.dart';
 import '../../../shared/domain/entities/financial_goal.dart';
 import '../../../shared/domain/repositories/recurring_transaction_repository.dart';
 import '../../../shared/domain/services/financial_calculator.dart';
+import '../../../features/ai_assistant/domain/auto_pilot_rebalancer.dart';
 import 'ai_tool.dart';
 
 /// Builds the full set of [AITool]s the assistant can call, scoped to one
@@ -56,6 +58,7 @@ class FinancialToolsRegistry {
         _getIncomeVsExpense(),
         _searchTransactions(),
         _simulateFinancialScenario(),
+        _rebalanceBudgetAllocations(),
       ];
 
   // -- Balance ------------------------------------------------------------
@@ -239,6 +242,79 @@ class FinancialToolsRegistry {
           final txns = await transactionRepository.getAllForUser(userId);
           final used = calculator.calculateBudgetItemUsage(categoryId, budget, txns);
           return ToolResult.ok({'categoryBudget': item.amount, 'used': used, 'remaining': item.amount - used});
+        },
+      );
+
+  AITool _rebalanceBudgetAllocations() => AITool(
+        name: 'rebalance_budget_allocations',
+        description: 'Analyzes category burn rates and calculates an optimal zero-deficit budget rebalancing plan from discretionary surpluses.',
+        parameters: {
+          'month': const ToolParameter(type: 'date', description: 'Any date within target month; defaults to today'),
+        },
+        execute: (args) async {
+          final month = _parseDate(args['month']) ?? DateTime.now();
+          final budget = await budgetRepository.getActiveForDate(userId, month);
+          if (budget == null) return const ToolResult.fail('No active budget found for that period.');
+          final items = await budgetRepository.getItemsForBudget(budget.id!);
+          final txns = await transactionRepository.getAllForUser(userId);
+          final categories = categoryRepository != null
+              ? await categoryRepository!.getAllForUser(userId)
+              : <Category>[];
+
+          final statuses = <CategoryBudgetStatus>[];
+          for (final item in items) {
+            final cat = categories.where((c) => c.id == item.categoryId).firstOrNull;
+            final catName = cat?.name ?? 'Category ${item.categoryId}';
+            final used = calculator.calculateBudgetItemUsage(item.categoryId, budget, txns);
+            statuses.add(CategoryBudgetStatus(
+              categoryName: catName,
+              categoryId: item.categoryId,
+              budgetAmount: item.amount,
+              spentAmount: used,
+            ));
+          }
+
+          final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+          final dayProgress = (month.day / daysInMonth).clamp(0.01, 1.0);
+          const rebalancer = AutoPilotRebalancer();
+          final plan = rebalancer.calculateRebalance(
+            categoryStatuses: statuses,
+            dayOfMonthProgress: dayProgress,
+          );
+
+          return ToolResult.ok({
+            'isRebalanceNeeded': plan.isRebalanceNeeded,
+            'totalDeficit': plan.totalDeficit,
+            'totalSurplus': plan.totalSurplus,
+            'deficitCategories': [
+              for (final d in plan.deficitCategories)
+                {
+                  'category': d.categoryName,
+                  'budget': d.budgetAmount,
+                  'spent': d.spentAmount,
+                  'deficit': d.deficit,
+                }
+            ],
+            'surplusCategories': [
+              for (final s in plan.surplusCategories)
+                {
+                  'category': s.categoryName,
+                  'budget': s.budgetAmount,
+                  'spent': s.spentAmount,
+                  'surplus': s.surplus,
+                }
+            ],
+            'transfers': [
+              for (final t in plan.transfers)
+                {
+                  'from': t.fromCategory,
+                  'to': t.toCategory,
+                  'amount': t.amount,
+                  'rationale': t.rationale,
+                }
+            ],
+            'updatedAllocations': plan.updatedAllocations,
+          });
         },
       );
 

@@ -166,6 +166,11 @@ class AIOrchestrator {
       toolResults: toolResults,
     );
 
+    final scenarioComparisonMatrix = engine.extractScenarioComparisonMatrix(
+      userMessage: userMessage,
+      toolResults: toolResults,
+    );
+
     final isDataSeeking = allToolsCalled.isNotEmpty || _isDataSeekingQuery(userMessage);
     final validation = validator.validate(
       response: responseText,
@@ -210,6 +215,7 @@ class AIOrchestrator {
       toolCallNames: allToolsCalled.toList(),
       actionDraft: actionDraft,
       scenarioSandbox: scenarioSandbox,
+      scenarioComparisonMatrix: scenarioComparisonMatrix,
       reasoningSteps: reasoningSteps,
       thinkingDuration: stopwatch.elapsed,
       createdAt: DateTime.now(),
@@ -293,6 +299,14 @@ class AIOrchestrator {
         return AIReasoningStep(
           title: 'Verifying active budget caps & remaining headroom',
           detail: 'Audited category spending limits against target allocations.',
+          type: AIReasoningStepType.calculate,
+          timestamp: DateTime.now(),
+          durationMs: durationMs,
+        );
+      case 'rebalance_budget_allocations':
+        return AIReasoningStep(
+          title: 'Simulating zero-deficit category rebalance',
+          detail: 'Analyzed category burn rates and planned surplus-to-deficit transfers.',
           type: AIReasoningStepType.calculate,
           timestamp: DateTime.now(),
           durationMs: durationMs,

@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../features/ai_assistant/domain/ai_action_draft.dart';
+import '../../../features/ai_assistant/domain/ai_deliberation_engine.dart';
 import '../../../features/ai_assistant/domain/ai_scenario_sandbox.dart';
+import '../../../features/ai_assistant/domain/scenario_comparison_matrix.dart';
 import '../tools/ai_tool.dart';
 import 'ai_engine.dart';
 import 'rule_based_ai_engine.dart';
@@ -147,6 +149,8 @@ class CloudAIEngine implements AIEngine {
     buffer.writeln('4. VERIFIED FIGURES ONLY: Every single currency figure (₱ or PHP) cited in factual claims about user finances must match the verified data.');
     buffer.writeln('5. Format cleanly for mobile reading (under 4 concise paragraphs). Do NOT use any emojis in your response. Keep all text completely clean and professional without emojis.');
     buffer.writeln();
+    buffer.writeln(const AIDeliberationEngine().getDeliberationDirectives());
+    buffer.writeln();
 
     final profileData = toolResults['user_financial_profile'];
     if (profileData != null) {
@@ -215,6 +219,17 @@ class CloudAIEngine implements AIEngine {
     required Map<String, Map<String, dynamic>> toolResults,
   }) {
     return _fallbackEngine.extractScenarioSandbox(
+      userMessage: userMessage,
+      toolResults: toolResults,
+    );
+  }
+
+  @override
+  ScenarioComparisonMatrix? extractScenarioComparisonMatrix({
+    required String userMessage,
+    required Map<String, Map<String, dynamic>> toolResults,
+  }) {
+    return _fallbackEngine.extractScenarioComparisonMatrix(
       userMessage: userMessage,
       toolResults: toolResults,
     );
